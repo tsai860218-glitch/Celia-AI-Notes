@@ -440,8 +440,17 @@ input,textarea{font-family:var(--font)}
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, setDoc }
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const FIREBASE_CONFIG = {
+  apiKey:      "AIzaSyD95ZaAwy4YvIN_ujLXEfv8IF65FFzxbGs",
+  authDomain:  "celia-ai-notes.firebaseapp.com",
+  projectId:   "celia-ai-notes",
+  storageBucket:"celia-ai-notes.firebasestorage.app",
+  messagingSenderId:"560961184863",
+  appId:       "1:560961184863:web:c46b38962a0c75dcd7e7ea"
+};
 
 window._fbInit = async (cfg) => {
   try {
@@ -464,6 +473,8 @@ window._fbInit = async (cfg) => {
     return true;
   } catch(e){ console.error('Firebase init error',e); return false; }
 };
+
+window._FIREBASE_CONFIG = FIREBASE_CONFIG;
 </script>
 
 <script>
@@ -521,27 +532,25 @@ async function saveConfig(){
 }
 
 async function tryAutoConnect(){
-  const raw = localStorage.getItem('fb_cfg');
-  if(!raw) return;
-  try {
-    const cfg = JSON.parse(raw);
-    document.getElementById('cfg-apiKey').value    = cfg.apiKey||'';
-    document.getElementById('cfg-projectId').value = cfg.projectId||'';
-    document.getElementById('cfg-appId').value     = cfg.appId||'';
-    const ok = await window._fbInit(cfg);
-    if(ok){ useFirebase=true; }
-    else   { document.getElementById('setup-banner').style.display='flex'; }
-  } catch(e){ document.getElementById('setup-banner').style.display='flex'; }
+  let tries=0;
+  while(!window._FIREBASE_CONFIG && tries++<30) await new Promise(r=>setTimeout(r,100));
+  const cfg = window._FIREBASE_CONFIG;
+  if(!cfg) return;
+  const ok = await window._fbInit(cfg);
+  if(ok){ useFirebase=true; }
 }
 
 /* ─── Init ───────────────────────────────────────────────────── */
 window.addEventListener('load', async ()=>{
-  // Wait for firebase module
   let tries=0;
   while(!window._fbInit && tries++<30) await new Promise(r=>setTimeout(r,100));
   await tryAutoConnect();
   await loadNotes();
-  if(!useFirebase) document.getElementById('setup-banner').style.display='flex';
+  if(useFirebase){
+    document.getElementById('setup-banner').style.display='none';
+    setStatus('🔥 Firebase 已連線');
+    setTimeout(()=>setStatus(''),2000);
+  }
 });
 
 async function loadNotes(){
